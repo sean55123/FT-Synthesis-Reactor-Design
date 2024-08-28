@@ -24,7 +24,6 @@ class FT_PBR:
         self.NH3 = 0 
         self.N2 = 0
         self.R = 8.314
-        self.bd = 1.64 * 1e6
         
         try:
             self.k5m = 1.4*(10**3)*math.exp(-92890/(8.314*init[53]))#92890 4.65 1.4
@@ -47,7 +46,7 @@ class FT_PBR:
             self.Kp = 0
         
     def kinetics(self):
-        FT = sum(self.init[-2])
+        FT = sum(self.init[:-2])
         A = (self.init[0]*(self.PT/FT)*(self.init[53]/self.init[54]))*(self.init[2]*(self.PT/FT)*(self.init[53]/self.init[54]))/((self.init[1]*(self.PT/FT)*(self.init[53]/self.init[54]))**0.5)
         B = (self.init[3]*(self.PT/FT)*(self.init[53]/self.init[54]))*((self.init[1]*(self.PT/FT)*(self.init[53]/self.init[54]))**0.5)/self.Kp
         A1 = (1/(self.K2*self.K3*self.K4))*((self.init[2]*(self.PT/FT)*(self.init[53]/self.init[54]))/((self.init[1]*(self.PT/FT)*(self.init[53]/self.init[54]))**2)) 
@@ -60,28 +59,29 @@ class FT_PBR:
         upper_1 = ((self.k1*(self.init[0]*(self.PT/FT)*(self.init[53]/self.init[54])))/(self.k1*(self.init[0]*(self.PT/FT)*(self.init[53]/self.init[54]))+self.k5*(self.init[1]*(self.PT/FT)*(self.init[53]/self.init[54]))))
         
         betaf = []
-        for i in range(23):
-            betaf.append(self.alpha**(i+1))*upper_1
+        for i in range(24):
+            betaf.append(self.alpha**(i+1)*upper_1)
         betaf = np.array(betaf)
         
-        betai = np.ones(len(self.init) - 7)
+        betai = np.ones(len(betaf))
         for i in range(2, 26):
+            x = i - 2
             b_sum = 0
             for j in range(i, 1, -1):
-                b_sum = (self.alpha ** (i-j)) * self.init[2*i+1] * (self.PT/FT) * (self.init[53] - self.To)
+                b_sum += (self.alpha ** (i-j)) * self.init[2*j+1] * (self.PT/FT) * (self.init[53] - self.To)
             
-            betaf[i] = self.k6m * b_sum / RRR
+            betai[x] = self.k6m * b_sum / RRR
         
         try:
             betas = betai + betaf
             beta = np.ones(len(betas))
             for i in range(len(betas)):
-                beta[i] = (self.k6m/self.k6) * (self.init[(i+2)*2+1] * (self.PT/self.FT)*(self.init[53]/self.To))/betas[i]
+                beta[i] = (self.k6m/self.k6) * (self.init[(i+2)*2+1] * (self.PT/FT)*(self.init[53]/self.To))/betas[i]
         except ZeroDivisionError:
             beta = np.zeros(len(betas))
         
         alpha_prob = np.ones(25)
-        for i in range(alpha_prob):
+        for i in range(len(alpha_prob)):
             alpha_prob[i] = (i+1) * ((1-self.alpha)**2) * (self.alpha**i)
         
         Chigh = 0
@@ -90,7 +90,7 @@ class FT_PBR:
             for j in range(i):
                 product *= alpha_prob[j]
             Chigh += product
-        
+
         Deno = 0
         for i in range(1, 11):
             product = 0
@@ -100,24 +100,24 @@ class FT_PBR:
         
         Deno = 1 + (1+A1+A2+A3) * (Deno+Chigh)
         
-        r_olef = (self.k5e * (self.init[1] * (self.PT/self.FT)) * alpha_prob[1:]) / Deno
+        r_olef = (self.k5e * (self.init[1] * (self.PT/FT)) * alpha_prob[1:]) / Deno
         r_paraf = (self.k6e * (1-beta) * alpha_prob[1:]) / Deno
-        rCO2_1 = (self.kv*(A-B))/(1 + self.kv*A)
-        r_ch4 = (self.k5m * (self.init[1] * (self.PT/self.FT) * alpha_prob[0])) / Deno
+        r_co2 = (self.kv*(A-B))/(1 + self.kv*A)
+        r_ch4 = (self.k5m * (self.init[1] * (self.PT/FT) * alpha_prob[0])) / Deno
         
-        r_co = -rCO2_1 - r_ch4
+        r_co = -r_co2 - r_ch4
         for i in range(len(r_olef)):
             r_co -= ((i+2)*r_olef[i] + (i+2)*r_paraf)
         
-        r_h2 = rCO2_1 - 3*r_ch4
-        for i in range(1, 26):
+        r_h2 = r_co2 - 3*r_ch4
+        for i in range(1, 25):
             j = i + 1
             r_h2 -= (2*j*r_paraf[i-1] + (2*j+1)*r_olef[i-1])
         
-        r_h2o = -rCO2_1 + r_ch4
-        for i in range(r_olef):
+        r_h2o = -r_co2 + r_ch4
+        for i in range(len(r_olef)):
             r_h2o += ((i+2)*r_olef[i] + (i+2)*r_paraf)
-        return r_olef, r_paraf, rCO2_1, r_ch4, r_co, r_h2, r_h2o
+        return r_olef, r_paraf, r_co2, r_ch4, r_co, r_h2, r_h2o
                 
     def energy_balance(self):
         # Enthalpy for specific component
@@ -234,7 +234,8 @@ class FT_PBR:
         except OverflowError:
             CP = np.zeros(52)
         
-        sumSiFi = sum(self.init[4:53] * CP[4:53] * 4.18)
+        sumFiCpi = sum(self.init[4:53] * CP[4:53] * 4.18)
+        print(sumFiCpi)
         
         dcp = []
         num = 0
@@ -254,7 +255,44 @@ class FT_PBR:
         
         dcp = np.array(dcp)
         dH = dHr + dcp * 4.18 * (self.init[53] - 298)
-        return sumSiFi, dH
+        return sumFiCpi, dH
         
     def reactor(self):
-        pass
+        Ac_1 = 0.159592907*self.z_1  #m2
+        Ao_1 = 0.18315*self.z_1 # 0.079 m
+        a = 4/0.0508 # Heat exchanging area with 2-inch tube
+        bd = 1640000 #g/m3
+        Sc = 24 # m2/g catalyst 比表面積
+        Ut = 38.8 #8.4277#38.8 #W/m2-K 32.9 # 管側U
+        Us = 39.9 #9.6126#39.9 #W/m2-K # 殼側U
+        L_1 = self.z_1
+        
+        r_olef, r_paraf, r_co2, r_ch4, r_co, r_h2, r_h2o = self.kinetics()
+        sumFiCpi, dH = self.energy_balance()
+        R = [r_co, r_h2, r_h2o, r_co2, r_ch4]
+        for i in range(len(r_olef)):
+            R.append(r_paraf[i])
+            R.append(r_olef[i])
+        R = np.array(R)
+        
+        dFdz = R * Ac_1 * bd * self.Nt_1
+        
+        Q = -R[3]*dH[0] + sum(R[4:] * dH[1:])
+        
+        dTtdz = ((Ut*a*(self.init[54]-self.init[53]) - Q*Sc*bd)/sumFiCpi)*Ac_1 # process temp
+        CP_oil = 0.4725*self.init[53] + 122.1 #J/mol-K thermal oil CP
+        dTsdz = (self.Nt_1*Us*Ao_1*(self.init[54]-self.init[53]))/ (CP_oil*self.mc_1*self.z_1)
+        return dFdz, dTtdz, dTsdz
+    
+H2in = 234.19
+To = 522.55
+Ta0 = 535.53
+z_1 = 12.45
+Nt_1 = 96
+mc_1 = 598.05
+alpha = 0.3
+Y_init = np.array([0.0001,H2in,0,83.33,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, To, Ta0])
+Vspan = np.linspace(0, z_1, 20000)
+reac = FT_PBR(Y_init, To, Ta0, z_1, Nt_1, mc_1, H2in, alpha)
+
+sol = odeint(reac.reactor(), Y_init, Vspan)

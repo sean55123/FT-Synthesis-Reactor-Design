@@ -8,7 +8,7 @@ To = 522.55 # Initital process temp (oC)
 Ta0 = 535.53 # Initital coolent temp (oC)
 z = 12.45 # Reactor length
 Nt = 96 # Number of tubes packed 
-mc = 598.05
+mc = 598.05 # Coolent mass flow rate (kg/hr)
 alpha = 0.3 # Chain factor
 Y_init = np.array([0.0001, H2in, 0, 83.33, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,

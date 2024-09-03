@@ -1,7 +1,5 @@
 import math
 import numpy as np
-from scipy.integrate import solve_ivp
-import matplotlib.pyplot as plt
 
 class FT_PBR:
     def __init__(self, init, To, Ta0, z, Nt, mc, H2in, alpha):

@@ -24,7 +24,27 @@ def ODEs(t, Y):
 
 sol = solve_ivp(ODEs, [Vspan[0], Vspan[-1]], Y_init, t_eval=Vspan, method='BDF')
 
-plt.plot(sol.t, sol.y[53,:], label='Process Temp')
-plt.plot(sol.t, sol.y[54,:], label='Coolent Temp')
-plt.legend()
+fig, axs = plt.subplots(2, 2, figsize=(10, 8))
+ax1 = axs[0, 0]
+ax2 = axs[0, 1]
+ax3 = axs[1, 0]
+ax4 = axs[1, 1]
+ax1.plot(sol.t, sol.y[53,:], label='Process Temp')
+ax1.plot(sol.t, sol.y[54,:], label='Coolent Temp')
+ax1.set_ylabel('Temp. ($^o$C)')
+ax1.legend()
+
+ax2.plot(sol.t, sol.y[0,:], label='CO flowrate')
+ax2.set_ylabel('Flowrate (kg/hr)')
+ax2.legend()
+
+ax3.plot(sol.t, sol.y[1,:], label='H$_2$ flowrate')
+ax3.set_xlabel('Reactor length (m)')
+ax3.set_ylabel('Flowrate (kg/hr)')
+ax3.legend()
+
+ax4.plot(sol.t, sol.y[3,:], label='CO$_2$ flowrate')
+ax4.set_xlabel('Reactor length (m)')
+ax4.set_ylabel('Flowrate (kg/hr)')
+ax4.legend()
 plt.show()

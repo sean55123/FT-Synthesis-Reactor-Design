@@ -1,6 +1,5 @@
 import math
 import numpy as np
-from scipy.integrate import odeint
 from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
 
@@ -179,7 +178,7 @@ class FT_PBR:
         dHr = np.array(dHr)
         
         CP = []
-        try:  # ideal gas for cp #cal/mol-K CP[-1]: N2
+        try:  # Ideal gas thermodynamic model for cp evaluation #cal/mol-K CP[-1]: N2
             CP.append(6.95233 + 2.09540*(((3085.1/self.init[53])/math.sinh(3085.1/self.init[53]))**2) + 2.01951*(((1538.2/self.init[53])/math.cosh(1538.2/self.init[53]))**2)) # CO
             CP.append(6.59621 + 2.28337*(((2466/self.init[53])/math.sinh(2466/self.init[53]))**2) + 0.89806*(((567.6/self.init[53])/math.cosh(567.6/self.init[53]))**2)) # H2
             CP.append(7.96862 + 6.39868*(((2610.5/self.init[53])/math.sinh(2610.5/self.init[53]))**2) + 2.12477*(((1169/self.init[53])/math.cosh(1169/self.init[53]))**2)) # H2O
@@ -265,9 +264,9 @@ class FT_PBR:
         Ao_1 = 0.18315*self.z # 0.079 m
         a = 4/0.0508 # Heat exchanging area with 2-inch tube
         bd = 1640000 #g/m3
-        Sc = 24 # m2/g catalyst 比表面積
-        Ut = 38.8 #8.4277#38.8 #W/m2-K 32.9 # 管側U
-        Us = 39.9 #9.6126#39.9 #W/m2-K # 殼側U
+        Sc = 24 # m2/g catalyst surface area
+        Ut = 38.8 #8.4277#38.8 #W/m2-K 32.9 # Tube-side U
+        Us = 39.9 #9.6126#39.9 #W/m2-K # Shell-side U
         
         r_olef, r_paraf, r_co2, r_ch4, r_co, r_h2, r_h2o = self.kinetics()
         sumFiCpi, dH = self.energy_balance()
@@ -285,30 +284,3 @@ class FT_PBR:
         CP_oil = 0.4725*self.init[53] + 122.1 #J/mol-K thermal oil CP
         dTsdz = (self.Nt*Us*Ao_1*(self.init[54]-self.init[53]))/ (CP_oil*self.mc*self.z)
         return dFdz, dTtdz, dTsdz
-
-
-H2in = 234.19
-To = 522.55
-Ta0 = 535.53
-z = 12.45
-Nt = 96
-mc = 598.05
-alpha = 0.3
-Y_init = np.array([0.0001, H2in, 0, 83.33, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-                   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                   0, 0, 0, 0, 0, 0, To, Ta0])
-Vspan = np.linspace(0, z, 20000)
-
-def ODEs(t, Y):
-    reac = FT_PBR(Y, To, Ta0, z, Nt, mc, H2in, alpha)
-    dFdz, dTtdz, dTsdz = reac.reactor()
-    dYdW = np.concatenate((dFdz, [dTtdz, dTsdz])) 
-    return dYdW
-
-sol = solve_ivp(ODEs, [Vspan[0], Vspan[-1]], Y_init, t_eval=Vspan, method='BDF')
-
-plt.plot(sol.t, sol.y[53,:], label='Process Temp')
-plt.plot(sol.t, sol.y[54,:], label='Coolent Temp')
-plt.legend()
-plt.show()

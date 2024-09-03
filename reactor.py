@@ -1,15 +1,17 @@
 import math
 import numpy as np
 from scipy.integrate import odeint
+import matplotlib.pyplot as plt
 
 class FT_PBR:
-    def __init__(self, init, To, Ta0, z_1, Nt_1, mc_1, H2in, alpha):
-        self.init = init # [1, 2, ..., 25, 26, ..., T_1(53), T_a(54)]
+    def __init__(self, init, To, Ta0, z, Nt, mc, H2in, alpha):
+        #init [CO, H2, H2O, CO2, CH4, C2H4, ..., 25, 26, ..., T_1(53), T_a(54)]
+        self.init = init
         self.To = To
         self.Ta0 = Ta0
-        self.z_1 = z_1
-        self.Nt_1 = Nt_1
-        self.mc_1 = mc_1
+        self.z = z
+        self.Nt = Nt
+        self.mc = mc
         self.H2in = H2in
         self.alpha = alpha
         
@@ -86,15 +88,15 @@ class FT_PBR:
         
         Chigh = 0
         for i in range(11, 26):
-            product = 0
+            product = 1
             for j in range(i):
                 product *= alpha_prob[j]
             Chigh += product
-
+        
         Deno = 0
         for i in range(1, 11):
-            product = 0
-            for j in range(j):
+            product = 1
+            for j in range(i):
                 product *= alpha_prob[j]
             Deno += product
         
@@ -107,7 +109,7 @@ class FT_PBR:
         
         r_co = -r_co2 - r_ch4
         for i in range(len(r_olef)):
-            r_co -= ((i+2)*r_olef[i] + (i+2)*r_paraf)
+            r_co -= ((i+2)*r_olef[i] + (i+2)*r_paraf[i])
         
         r_h2 = r_co2 - 3*r_ch4
         for i in range(1, 25):
@@ -116,15 +118,16 @@ class FT_PBR:
         
         r_h2o = -r_co2 + r_ch4
         for i in range(len(r_olef)):
-            r_h2o += ((i+2)*r_olef[i] + (i+2)*r_paraf)
+            r_h2o += ((i+2)*r_olef[i] + (i+2)*r_paraf[i])
+        
         return r_olef, r_paraf, r_co2, r_ch4, r_co, r_h2, r_h2o
                 
     def energy_balance(self):
         # Enthalpy for specific component
         dHr = []
-        dHr.append(41.0953 *1000) #J/mol
-        dHr.append(-74.399 *1000)
-        dHr.append(-209.725*1000)
+        dHr.append(41.0953 *1000) #J/mol CO2
+        dHr.append(-74.399 *1000) # CH4
+        dHr.append(-209.725*1000) # C2H4
         dHr.append(-83.684*1000)
         dHr.append(-483.377*1000)
         dHr.append(-104.51*1000)
@@ -171,17 +174,17 @@ class FT_PBR:
         dHr.append(-5985.9305*1000)
         dHr.append(-539.12386*1000)
         dHr.append(-6484.0277*1000)
-        dHr.append(-559.78978*1000)
+        dHr.append(-559.78978*1000) # C25H52
         dHr = np.array(dHr)
         
         CP = []
         try:  # ideal gas for cp #cal/mol-K CP[-1]: N2
-            CP.append(6.95233 + 2.09540*(((3085.1/self.init[53])/math.sinh(3085.1/self.init[53]))**2) + 2.01951*(((1538.2/self.init[53])/math.cosh(1538.2/self.init[53]))**2))
-            CP.append(6.59621 + 2.28337*(((2466/self.init[53])/math.sinh(2466/self.init[53]))**2) + 0.89806*(((567.6/self.init[53])/math.cosh(567.6/self.init[53]))**2))
-            CP.append(7.96862 + 6.39868*(((2610.5/self.init[53])/math.sinh(2610.5/self.init[53]))**2) + 2.12477*(((1169/self.init[53])/math.cosh(1169/self.init[53]))**2))
-            CP.append(7.014904 + 8.249737*(((1428/self.init[53])/math.sinh(1428/self.init[53]))**2)+ 6.305532*(((588/self.init[53])/math.cosh(588/self.init[53]))**2))
-            CP.append(7.953091 + 19.09167*(((2086.9/self.init[53])/math.sinh(2086.9/self.init[53]))**2) + 9.936467*(((991.96/self.init[53])/math.cosh(991.96/self.init[53]))**2))
-            CP.append(7.972676 + 22.6402*(((1596/self.init[53])/math.sinh(1596/self.init[53]))**2) + 13.16041*(((740.8/self.init[53])/math.cosh(740.8/self.init[53]))**2))
+            CP.append(6.95233 + 2.09540*(((3085.1/self.init[53])/math.sinh(3085.1/self.init[53]))**2) + 2.01951*(((1538.2/self.init[53])/math.cosh(1538.2/self.init[53]))**2)) # CO
+            CP.append(6.59621 + 2.28337*(((2466/self.init[53])/math.sinh(2466/self.init[53]))**2) + 0.89806*(((567.6/self.init[53])/math.cosh(567.6/self.init[53]))**2)) # H2
+            CP.append(7.96862 + 6.39868*(((2610.5/self.init[53])/math.sinh(2610.5/self.init[53]))**2) + 2.12477*(((1169/self.init[53])/math.cosh(1169/self.init[53]))**2)) # H2O
+            CP.append(7.014904 + 8.249737*(((1428/self.init[53])/math.sinh(1428/self.init[53]))**2)+ 6.305532*(((588/self.init[53])/math.cosh(588/self.init[53]))**2)) # CO2
+            CP.append(7.953091 + 19.09167*(((2086.9/self.init[53])/math.sinh(2086.9/self.init[53]))**2) + 9.936467*(((991.96/self.init[53])/math.cosh(991.96/self.init[53]))**2)) # CH4
+            CP.append(7.972676 + 22.6402*(((1596/self.init[53])/math.sinh(1596/self.init[53]))**2) + 13.16041*(((740.8/self.init[53])/math.cosh(740.8/self.init[53]))**2)) # C2H4
             CP.append(10.57036 + 20.23908*(((872.24/self.init[53])/math.sinh(872.24/self.init[53]))**2) + 16.03373*(((2430.4/self.init[53])/math.cosh(2430.4/self.init[53]))**2))
             CP.append(10.47387 + 35.97019*(((1398.8/self.init[53])/math.sinh(1398.8/self.init[53]))**2) + 17.85469*(((616.46/self.init[53])/math.cosh(616.46/self.init[53]))**2))
             CP.append(14.20512 + 30.24028*(((844.31/self.init[53])/math.sinh(844.31/self.init[53]))**2) + 20.58016*(((2482.7/self.init[53])/math.cosh(2482.7/self.init[53]))**2))
@@ -227,19 +230,18 @@ class FT_PBR:
             CP.append(97.96264 + 294.7836*(((1723.1/self.init[53])/math.sinh(1723.1/self.init[53]))**2) + 203.5636*(((784.97/self.init[53])/math.cosh(784.97/self.init[53]))**2))
             CP.append(99.44827 + 299.6561*(((1714.4/self.init[53])/math.sinh(1714.4/self.init[53]))**2) +207.1033*(((779.51/self.init[53])/math.cosh(779.51/self.init[53]))**2))
             CP.append(102.0302 + 307.8962*(((815.29/self.init[53])/math.sinh(815.29/self.init[53]))**2) -120.4213 *(((944.98/self.init[53])/math.cosh(944.98/self.init[53]))**2))
-            CP.append(106.3223+ 319.7908*(((1721.5/self.init[53])/math.sinh(1721.5/self.init[53]))**2) + 220.8799*(((784.28/self.init[53])/math.cosh(784.28/self.init[53]))**2))
-            CP.append(106.3223+ 319.7908*(((1721.5/self.init[53])/math.sinh(1721.5/self.init[53]))**2) + 220.8799*(((784.28/self.init[53])/math.cosh(784.28/self.init[53]))**2))
-            CP.append(6.95161 + 2.05763*(((1701.6/self.init[53])/math.sinh(1701.6/self.init[53]))**2) + 0.0247*(((909.79/self.init[53])/math.cosh(909.79/self.init[53]))**2))
+            CP.append(106.3223+ 319.7908*(((1721.5/self.init[53])/math.sinh(1721.5/self.init[53]))**2) + 220.8799*(((784.28/self.init[53])/math.cosh(784.28/self.init[53]))**2)) # C25H50
+            CP.append(106.3223+ 319.7908*(((1721.5/self.init[53])/math.sinh(1721.5/self.init[53]))**2) + 220.8799*(((784.28/self.init[53])/math.cosh(784.28/self.init[53]))**2)) # C25H52
+            CP.append(6.95161 + 2.05763*(((1701.6/self.init[53])/math.sinh(1701.6/self.init[53]))**2) + 0.0247*(((909.79/self.init[53])/math.cosh(909.79/self.init[53]))**2)) # N2
             CP = np.array(CP)
         except OverflowError:
             CP = np.zeros(52)
         
-        sumFiCpi = sum(self.init[4:53] * CP[4:53] * 4.18)
-        print(sumFiCpi)
+        sumFiCpi = np.dot(self.init[:53], CP[:53]) * 4.18
         
         dcp = []
         num = 0
-        for i in range(5, 26, 2):
+        for i in range(5, 52, 2):
             if i == 5:
                 dcp_co2 = (CP[0] + CP[2]) - (CP[3] + CP[1])
                 dcp_ch4 = (CP[4] + CP[2]) - (CP[0] + 3*CP[1])
@@ -258,14 +260,13 @@ class FT_PBR:
         return sumFiCpi, dH
         
     def reactor(self):
-        Ac_1 = 0.159592907*self.z_1  #m2
-        Ao_1 = 0.18315*self.z_1 # 0.079 m
+        Ac_1 = 0.159592907*self.z  #m2
+        Ao_1 = 0.18315*self.z # 0.079 m
         a = 4/0.0508 # Heat exchanging area with 2-inch tube
         bd = 1640000 #g/m3
         Sc = 24 # m2/g catalyst 比表面積
         Ut = 38.8 #8.4277#38.8 #W/m2-K 32.9 # 管側U
         Us = 39.9 #9.6126#39.9 #W/m2-K # 殼側U
-        L_1 = self.z_1
         
         r_olef, r_paraf, r_co2, r_ch4, r_co, r_h2, r_h2o = self.kinetics()
         sumFiCpi, dH = self.energy_balance()
@@ -275,24 +276,40 @@ class FT_PBR:
             R.append(r_olef[i])
         R = np.array(R)
         
-        dFdz = R * Ac_1 * bd * self.Nt_1
+        dFdz = R * Ac_1 * bd * self.Nt
         
         Q = -R[3]*dH[0] + sum(R[4:] * dH[1:])
         
         dTtdz = ((Ut*a*(self.init[54]-self.init[53]) - Q*Sc*bd)/sumFiCpi)*Ac_1 # process temp
         CP_oil = 0.4725*self.init[53] + 122.1 #J/mol-K thermal oil CP
-        dTsdz = (self.Nt_1*Us*Ao_1*(self.init[54]-self.init[53]))/ (CP_oil*self.mc_1*self.z_1)
+        dTsdz = (self.Nt*Us*Ao_1*(self.init[54]-self.init[53]))/ (CP_oil*self.mc*self.z)
         return dFdz, dTtdz, dTsdz
-    
+
+
 H2in = 234.19
 To = 522.55
 Ta0 = 535.53
-z_1 = 12.45
-Nt_1 = 96
-mc_1 = 598.05
+z = 12.45
+Nt = 96
+mc = 598.05
 alpha = 0.3
-Y_init = np.array([0.0001,H2in,0,83.33,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, To, Ta0])
-Vspan = np.linspace(0, z_1, 20000)
-reac = FT_PBR(Y_init, To, Ta0, z_1, Nt_1, mc_1, H2in, alpha)
+Y_init = np.array([0.0001, H2in, 0, 83.33, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+                   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                   0, 0, 0, 0, 0, 0, To, Ta0])
+Vspan = np.linspace(0, z, 20000)
 
-sol = odeint(reac.reactor(), Y_init, Vspan)
+def ODEs(Y, W):
+    reac = FT_PBR(Y, To, Ta0, z, Nt, mc, H2in, alpha)
+    dFdz, dTtdz, dTsdz = reac.reactor()
+    dYdW = np.concatenate((dFdz, [dTtdz, dTsdz])) 
+    return dYdW
+
+# a = FT_PBR(Y_init, To, Ta0, z, Nt, mc, H2in, alpha)
+# a.reactor()
+
+sol = odeint(ODEs, Y_init, Vspan)
+# print(sol.shape)
+plt.plot(Vspan, sol[:,53])
+plt.plot(Vspan, sol[:,54])
+plt.show()

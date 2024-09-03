@@ -1,6 +1,7 @@
 import math
 import numpy as np
 from scipy.integrate import odeint
+from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
 
 class FT_PBR:
@@ -299,17 +300,15 @@ Y_init = np.array([0.0001, H2in, 0, 83.33, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                    0, 0, 0, 0, 0, 0, To, Ta0])
 Vspan = np.linspace(0, z, 20000)
 
-def ODEs(Y, W):
+def ODEs(t, Y):
     reac = FT_PBR(Y, To, Ta0, z, Nt, mc, H2in, alpha)
     dFdz, dTtdz, dTsdz = reac.reactor()
     dYdW = np.concatenate((dFdz, [dTtdz, dTsdz])) 
     return dYdW
 
-# a = FT_PBR(Y_init, To, Ta0, z, Nt, mc, H2in, alpha)
-# a.reactor()
+sol = solve_ivp(ODEs, [Vspan[0], Vspan[-1]], Y_init, t_eval=Vspan, method='BDF')
 
-sol = odeint(ODEs, Y_init, Vspan)
-# print(sol.shape)
-plt.plot(Vspan, sol[:,53])
-plt.plot(Vspan, sol[:,54])
+plt.plot(sol.t, sol.y[53,:], label='Process Temp')
+plt.plot(sol.t, sol.y[54,:], label='Coolent Temp')
+plt.legend()
 plt.show()

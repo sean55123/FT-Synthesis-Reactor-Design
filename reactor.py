@@ -13,17 +13,14 @@ class FT_PBR:
         self.H2in = H2in
         self.alpha = alpha
         
-        self.k1_1 = 2.33 * 1e-5
         self.k1 = 0.06 * 1e-5
         self.k6m = 2.74 * 1e-3
         self.K2 = 0.0025 * 1e-2
         self.K3 = 4.68 * 1e-2
         self.K4 = 0.8
-        self.Kv = 1.13 * 1e-3
         self.PT = 20.92
         self.NH3 = 0 
         self.N2 = 0
-        self.R = 8.314
         
         try:
             self.k5m = 1.4*(10**3)*math.exp(-92890/(8.314*init[53]))#92890 4.65 1.4

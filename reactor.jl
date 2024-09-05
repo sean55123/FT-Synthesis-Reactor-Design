@@ -1,48 +1,24 @@
 using LinearAlgebra, Base.MathConstants
 using DifferentialEquations, Plots
 
-struct FT_PBR
+mutable struct FT_PBR
     init::Vector{Float64}
     To::Float64
     Ta0::Float64
     z::Float64
-    Nt::Float64
+    Nt::Int
     mc::Float64
     H2in::Float64
     alpha::Float64
-
-    k1_1::Float64
-    k1::Float64
-    k6m::Float64
-    K2::Float64
-    K3::Float64
-    K4::Float64
-    Kv::Float64
-    PT::Float64
-    NH3::Float64
-    N2::Float64
-    R::Float64
-    k5m::Float64
-    k5::Float64
-    k5e::Float64
-    k6::Float64
-    k6e::Float64
-    kv::Float64
-    Kp::Float64
 end
 
-function FT_PBR(init::Vector{Float64}, To::Float64, Ta0::Float64, z::Float64, Nt::Float64, mc::Float64, H2in::Float64, alpha::Float64)
-    k1_1 = 2.33 * 1e-5
+function kinetics(pbr::FT_PBR)
     k1 = 0.06 * 1e-5
     k6m = 2.74 * 1e-3
     K2 = 0.0025 * 1e-2
     K3 = 4.68 * 1e-2
     K4 = 0.8
-    Kv = 1.13 * 1e-3
     PT = 20.92
-    NH3 = 0.0
-    N2 = 0.0
-    R = 8.314
 
     try
         k5m = 1.4*(10^3)*exp(-92890/(R*init[53]))
@@ -66,19 +42,15 @@ function FT_PBR(init::Vector{Float64}, To::Float64, Ta0::Float64, z::Float64, Nt
         Kp = 0.0
     end
 
-    return FT_PBR(init, To, Ta0, z, Nt, mc, H2in, alpha, k1_1, k1, k6m, K2, K3, K4, Kv, PT, NH3, N2, R, k5m, k5, k5e, k6, k6e, kv, Kp)
-end
-
-function kinetics(pbr::FT_PBR)
     FT = sum(pbr.init[1:end-2])
-    A = (pbr.init[1]*(pbr.PT/FT)*(pbr.init[53]/pbr.init[54]))*(pbr.init[3]*(pbr.PT/FT)*(pbr.init[53]/pbr.init[54])) / ((pbr.init[2]*(pbr.PT/FT)*(pbr.init[53]/pbr.init[54]))^0.5)
-    B = (pbr.init[4]*(pbr.PT/FT)*(pbr.init[53]/pbr.init[54]))*((pbr.init[2]*(pbr.PT/FT)*(pbr.init[53]/pbr.init[54]))^0.5) / pbr.Kp
-    A1 = (1/(pbr.K2*pbr.K3*pbr.K4)) * ((pbr.init[3]*(pbr.PT/FT)*(pbr.init[53]/pbr.init[54])) / ((pbr.init[2]*(pbr.PT/FT)*(pbr.init[53]/pbr.init[54]))^2))
-    A2 = (1/(pbr.K3*pbr.K4)) * (1/(pbr.init[2]*(pbr.PT/FT)*(pbr.init[53]/pbr.init[54])))
-    A3 = 1/pbr.K4
+    A = (pbr.init[1]*(PT/FT)*(pbr.init[53]/pbr.init[54]))*(pbr.init[3]*(PT/FT)*(pbr.init[53]/pbr.init[54])) / ((pbr.init[2]*(PT/FT)*(pbr.init[53]/pbr.init[54]))^0.5)
+    B = (pbr.init[4]*(PT/FT)*(pbr.init[53]/pbr.init[54]))*((pbr.init[2]*(PT/FT)*(pbr.init[53]/pbr.init[54]))^0.5) / Kp
+    A1 = (1/(K2*K3*K4)) * ((pbr.init[3]*(PT/FT)*(pbr.init[53]/pbr.init[54])) / ((pbr.init[2]*(PT/FT)*(pbr.init[53]/pbr.init[54]))^2))
+    A2 = (1/(K3*K4)) * (1/(pbr.init[2]*(PT/FT)*(pbr.init[53]/pbr.init[54])))
+    A3 = 1/K4
 
-    RRR = (pbr.k1*(pbr.init[1]*(pbr.PT/FT)*(pbr.init[53]/pbr.init[54])) + pbr.k5*(pbr.init[2]*(pbr.PT/FT)*(pbr.init[53]/pbr.init[54])) + pbr.k6)
-    upper_1 = ((pbr.k1*(pbr.init[1]*(pbr.PT/FT)*(pbr.init[53]/pbr.init[54])))/(pbr.k1*(pbr.init[1]*(pbr.PT/FT)*(pbr.init[53]/pbr.init[54])) + pbr.k5*(pbr.init[2]*(pbr.PT/FT)*(pbr.init[53]/pbr.init[54]))))
+    RRR = (k1*(pbr.init[1]*(PT/FT)*(pbr.init[53]/pbr.init[54])) + k5*(pbr.init[2]*(PT/FT)*(pbr.init[53]/pbr.init[54])) + k6)
+    upper_1 = ((k1*(pbr.init[1]*(PT/FT)*(pbr.init[53]/pbr.init[54])))/(k1*(pbr.init[1]*(PT/FT)*(pbr.init[53]/pbr.init[54])) + k5*(pbr.init[2]*(PT/FT)*(pbr.init[53]/pbr.init[54]))))
 
     betaf = [pbr.alpha^(i+1) * upper_1 for i in 0:23]
     betai = ones(length(betaf))
@@ -86,16 +58,16 @@ function kinetics(pbr::FT_PBR)
         x = i - 2
         b_sum = 0.0
         for j in i:-1:2
-            b_sum += (pbr.alpha^(i-j)) * pbr.init[2*j+1] * (pbr.PT/FT) * (pbr.init[53] - pbr.To)
+            b_sum += (pbr.alpha^(i-j)) * pbr.init[2*j+1] * (PT/FT) * (pbr.init[53] - pbr.To)
         end
-        betai[x] = pbr.k6m * b_sum / RRR
+        betai[x] = k6m * b_sum / RRR
     end
 
     try
         betas = betai .+ betaf
         beta = ones(length(betas))
         for i in 1:length(betas)
-            beta[i] = (pbr.k6m/pbr.k6) * (pbr.init[(i+2)*2+1] * (pbr.PT/FT)*(pbr.init[53]/pbr.To)) / betas[i]
+            beta[i] = (k6m/k6) * (pbr.init[(i+2)*2+1] * (PT/FT)*(pbr.init[53]/pbr.To)) / betas[i]
         end
     catch ZeroDivisionError
         beta = zeros(length(betas))
@@ -123,10 +95,10 @@ function kinetics(pbr::FT_PBR)
 
     Deno = 1 + (1 + A1 + A2 + A3) * (Deno + Chigh)
 
-    r_olef = (pbr.k5e * (pbr.init[2] * (pbr.PT/FT)) * alpha_prob[2:end]) / Deno
-    r_paraf = (pbr.k6e * (1 .- beta) .* alpha_prob[2:end]) / Deno
-    r_co2 = (pbr.kv*(A-B))/(1 + pbr.kv*A)
-    r_ch4 = (pbr.k5m * (pbr.init[2] * (pbr.PT/FT) * alpha_prob[1])) / Deno
+    r_olef = (k5e * (pbr.init[2] * (PT/FT)) * alpha_prob[2:end]) / Deno
+    r_paraf = (k6e * (1 .- beta) .* alpha_prob[2:end]) / Deno
+    r_co2 = (kv*(A-B))/(1 + kv*A)
+    r_ch4 = (k5m * (pbr.init[2] * (PT/FT) * alpha_prob[1])) / Deno
 
     r_co = -r_co2 - r_ch4
     for i in 1:length(r_olef)

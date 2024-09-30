@@ -1,6 +1,7 @@
 using DifferentialEquations
 using Sundials
 using Plots
+using LaTeXStrings 
 
 # Input parameters
 H2in = 234.19       # H2 inlet flowrate (kg/hr)
@@ -33,7 +34,7 @@ Y_init[4] = 83.33       # CO2
 Y_init[54] = To         # Process temperature
 Y_init[55] = Ta0        # Coolant temperature
 
-Vspan = LinRange(0, z, 100)
+Vspan = LinRange(0, z, 20000)
 
 struct Parameters
     To::Float64
@@ -70,9 +71,9 @@ function ODEs!(dYdW, Y, params, z)
 end
 
 zspan = (0.0, z)
-prob = ODEProblem(ODEs!, Y_init, zspan, params)
 
-sol = solve(prob, Rodas5(autodiff=false), reltol=1e-4, abstol=1e-4, saveat=Vspan)
+prob = ODEProblem(ODEs!, Y_init, zspan, params; isoutofdomain=(u,p,t)->any(u .< 0))
+sol = solve(prob, Rodas5(autodiff=true), reltol=1e-6, abstol=1e-6, saveat=Vspan)
 
 Ysol = hcat(sol.u...)  # Convert solution to a matrix (55 x N)
 
@@ -97,14 +98,14 @@ xlabel!("Reactor length (m)")
 ylabel!("Flowrate (kg/hr)")
 title!("CO₂ Flowrate")
 
-plot5 = plot(sol.t, Ysol[5, :], label="CH4 flowrate")
+plot5 = plot(sol.t, Ysol[5, :], label= "CH₄ flowrate")
 xlabel!("Reactor length (m)")
 ylabel!("Flowrate (kg/hr)")
-title!("CH4 Flowrate")
+title!("CH₄ Flowrate")
 
-plot6 = plot(sol.t, Ysol[6, :], label="C2H4 flowrate")
+plot6 = plot(sol.t, Ysol[6, :], label= "C₂H₄ flowrate")
 xlabel!("Reactor length (m)")
 ylabel!("Flowrate (kg/hr)")
-title!("C2H4 Flowrate")
+title!("C₂H₄ Flowrate")
 
 plot(plot1, plot2, plot3, plot4, plot5, plot6, layout=(3,3), size=(1000,800))

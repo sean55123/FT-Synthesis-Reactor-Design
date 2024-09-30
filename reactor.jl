@@ -57,7 +57,7 @@ function compute_derivatives(Y, params)
         P_CO2 = P[4]
 
         P_H2_sqrt = sqrt(P_H2)
-        P_H2_inv = 1.0 / P_H2
+        P_H2_inv = etype(1.0) / P_H2
 
         A = P_CO * P_H2O / P_H2_sqrt
         B = P_CO2 * P_H2_sqrt / Kp

@@ -1,5 +1,7 @@
 function compute_derivatives(Y, params)
     try
+        etype = eltype(Y)
+
         # Extract parameters
         To = params.To
         Ta0 = params.Ta0
@@ -26,18 +28,18 @@ function compute_derivatives(Y, params)
         Ta = Y[55]  # Coolant temperature
         init = copy(Y)
 
-        T = max(T, 1e-6)
-        Ta = max(Ta, 1e-6)
+        T = max(T, etype(1e-6))
+        Ta = max(Ta, etype(1e-6))
 
-        R_gas = 8.314  # J/mol-K
+        R_gas = etype(8.314) # J/mol-K
 
         # Reaction rate constants
-        k5m = 1.4e3 * exp(-92890 / (R_gas * T))
-        k5 = 2.74e2 * exp(-87010 / (R_gas * T))
-        k6 = 1.5e6 * exp(-111040 / (R_gas * T))
+        k5m = etype(1.4e3) * exp(-etype(92890) / (R_gas * T))
+        k5 = etype(2.74e2) * exp(-etype(87010) / (R_gas * T))
+        k6 = etype(1.5e6) * exp(-etype(111040) / (R_gas * T))
         k6e = k6
         k5e = k5
-        kv = 1.57e1 * exp(-45080 / (R_gas * T))
+        kv = etype(1.57e1) * exp(-etype(45080) / (R_gas * T))
 
         # Equilibrium constant Kp
         Kp = exp(
@@ -59,9 +61,9 @@ function compute_derivatives(Y, params)
 
         A = P_CO * P_H2O / P_H2_sqrt
         B = P_CO2 * P_H2_sqrt / Kp
-        A1 = (1 / (K2 * K3 * K4)) * (P_H2O * P_H2_inv^2)
-        A2 = (1 / (K3 * K4)) * P_H2_inv
-        A3 = 1 / K4
+        A1 = (etype(1.0) / (K2 * K3 * K4)) * (P_H2O * P_H2_inv^2)
+        A2 = (etype(1.0) / (K3 * K4)) * P_H2_inv
+        A3 = etype(1.0) / K4
 
         # Reaction rate constants sum
         RRR = k1 * P_CO + k5 * P_H2 + k6
@@ -69,31 +71,32 @@ function compute_derivatives(Y, params)
         upper_1 = (k1 * P_CO) / RRR
 
         # Compute beta factors
+        # Compute beta factors
         i_vals = collect(1:25)
         betaf = alpha .^ i_vals * upper_1
 
         var = init[6:2:54]  # Adjusted indices for 1-based indexing
         denom_beta = betaf .+ (k6m / k6) .* var .* (PT / FT) .* (T / Ta0)
-        denom_beta = [x == 0 ? 1e-6 : x for x in denom_beta]
+        denom_beta = [x == 0 ? etype(1e-6) : x for x in denom_beta]
         beta = ((k6m / k6) .* var .* (PT / FT) .* (T / Ta0)) ./ denom_beta
-        alpha_prob = i_vals .* (1 - alpha)^2 .* alpha .^ (i_vals .- 1)
-        Deno = 1 + (1 + A1 + A2 + A3) * sum(alpha_prob)
+        alpha_prob = i_vals .* (etype(1.0) - alpha)^2 .* alpha .^ (i_vals .- 1)
+        Deno = etype(1.0) + (etype(1.0) + A1 + A2 + A3) * sum(alpha_prob)
 
         # Reaction rates
         r_olef = (k5e * P_H2 .* alpha_prob[2:end]) / Deno
-        r_paraf = (k6e .* (1 .- beta[2:end]) .* alpha_prob[2:end]) / Deno
+        r_paraf = (k6e .* (etype(1.0) .- beta[2:end]) .* alpha_prob[2:end]) / Deno
 
-        r_co2 = (kv * (A - B)) / (1 + kv * A)
+        r_co2 = (kv * (A - B)) / (etype(1.0) + kv * A)
         r_ch4 = (k5m * P_H2 * alpha_prob[1]) / Deno
 
         # Species rates
         i_vals_shifted = i_vals[2:end] .+ 1
 
         r_co = -r_co2 - r_ch4 - sum(i_vals_shifted .* (r_olef + r_paraf))
-        r_h2 = r_co2 - 3 * r_ch4 - sum((2 * i_vals_shifted .+ 1) .* r_olef + 2 * i_vals_shifted .* r_paraf)
+        r_h2 = r_co2 - etype(3.0) * r_ch4 - sum((etype(2.0) .* i_vals_shifted .+ etype(1.0)) .* r_olef + etype(2.0) .* i_vals_shifted .* r_paraf)
         r_h2o = -r_co2 + r_ch4 + sum(i_vals_shifted .* (r_olef + r_paraf))
 
-        R = zeros(53)
+        R = zeros(etype, 53)
         R[1] = r_co
         R[2] = r_h2
         R[3] = r_h2o
@@ -104,7 +107,7 @@ function compute_derivatives(Y, params)
 
         # Energy balance
         # Enthalpy changes (dHr) and heat capacities (CP)
-        dHr = [
+        dHr_raw = [
             4.10953e4, -7.4399e4, -2.09725e5, -8.3684e4, -4.83377e5, -1.0451e5,
             -7.54025e5, -1.25586e5, -1.01496e6, -1.46522e5, -1.27689e6,
             -1.66669e5, -1.54408e6, -1.91349e5, -1.80075e6, -2.55233e5,
@@ -117,10 +120,11 @@ function compute_derivatives(Y, params)
             -5.9859305e6, -5.3912386e5, -6.4840277e6, -5.5978978e5
         ]
 
-        CP = zeros(54)
+        dHr = map(etype, dHr_raw)
+        CP = zeros(etype, 54)
 
         # Ideal gas parameters for CP calculation
-        ideal_gas_params = [
+        ideal_gas_params_raw = [
             (6.95233, 2.09540, 3085.1, 2.01951, 1538.2),  # CO
             (6.59621, 2.28337, 2466.0, 0.89806, 567.6),   # H2
             (7.96862, 6.39868, 2610.5, 2.12477, 1169.0),  # H2O
@@ -177,33 +181,34 @@ function compute_derivatives(Y, params)
             (6.95161, 2.05763, 1701.6, 0.0247, 909.79), # N2
         ]
 
-        T_inv = 1.0 / T
+        ideal_gas_params = [map(etype, params) for params in ideal_gas_params_raw]
+
         for idx in 1:length(ideal_gas_params)
             A, B, C, D, E = ideal_gas_params[idx]
-            theta_C = C * T_inv
-            theta_E = E * T_inv
+            theta_C = C * (etype(1.0) / T)
+            theta_E = E * (etype(1.0) / T)
             sinh_C = sinh(theta_C)
             cosh_E = cosh(theta_E)
 
             # Avoid division by zero
-            sinh_C = sinh_C == 0 ? 1e-6 : sinh_C
-            cosh_E = cosh_E == 0 ? 1e-6 : cosh_E
+            sinh_C = sinh_C == etype(0) ? etype(1e-6) : sinh_C
+            cosh_E = cosh_E == etype(0) ? etype(1e-6) : cosh_E
 
             CP[idx] = A + B * (theta_C / sinh_C)^2 + D * (theta_E / cosh_E)^2
         end
 
         # Convert CP from cal/mol-K to J/mol-K
-        CP .= CP .* 4.184
+        CP .= CP .* etype(4.184)
 
         # For species without parameters, set a default CP value
-        default_CP = 29.0 * 4.184  # J/mol-K
+        default_CP = etype(29.0 * 4.184)  # J/mol-K
         CP[length(ideal_gas_params)+1:end] .= default_CP
 
         b = init[1:end-2]
         sumFiCpi = sum(b .* CP[1:53])
 
         dcp = zeros(length(dHr))
-        dH = dHr .+ dcp .* (T - 298)
+        dH = dHr .+ dcp .* (T - etype(298.0))
 
         # Heat flow
         Q = -R[4] * dH[1] + sum(R[5:end] .* dH[2:end])
@@ -212,17 +217,17 @@ function compute_derivatives(Y, params)
         dFdz = R .* Ac_1 .* bd .* Nt
 
         dTtdz = ((Ut * a * (Ta - T) - Q * Sc * bd) / sumFiCpi) * Ac_1  # Process temp derivative
-        CP_oil = 0.4725 * T + 122.1  # J/kg-K, thermal oil CP
+        CP_oil = etype(0.4725) * T + etype(122.1)  # J/kg-K, thermal oil CP
         dTsdz = (Nt * Us * Ao_1 * (Ta - T)) / (CP_oil * mc * z)
 
-        dYdW = zeros(55)
+        dYdW = zeros(etype, 55)
         dYdW[1:end-2] .= dFdz
         dYdW[54] = dTtdz
         dYdW[55] = dTsdz
         if any(isnan.(dYdW)) || any(isinf.(dYdW))
             error("dYdW contains NaN or Inf values")
         end
-
+        
         return dYdW
     catch e
         println("Error in compute_derivatives: ", e)

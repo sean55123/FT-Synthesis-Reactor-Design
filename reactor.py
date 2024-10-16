@@ -197,7 +197,7 @@ def compute_derivatives(
     # Reactor equations
     dFdz = R * Ac_1 * bd * Nt
 
-    dTtdz = ((Ut * a * (Ta - T) - Q * Sc * bd) / sumFiCpi) * Ac_1  # Process temp derivative
+    dTtdz = ((Ut * a * (Ta - T) - Q * bd ) / sumFiCpi) * Ac_1  # Process temp derivative
     CP_oil = 0.4725 * T + 122.1  # J/kg-K, thermal oil CP
     dTsdz = (Nt * Us * Ao_1 * (Ta - T)) / (CP_oil * mc * z)
 

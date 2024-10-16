@@ -19,13 +19,13 @@ K3 = 4.68e-2
 K4 = 0.8
 PT = 20.92          # Total pressure (bar)
 
-Ac_1 = 0.159592907 * z  # Cross-sectional area (m^2)
-Ao_1 = 0.18315 * z      # Outer area (m^2)
-a = 4 / 0.0508          # Heat exchanging area per unit volume (m^-1)
-bd = 1.64e6             # Bulk density (g/m^3)
-Sc = 24                 # Catalyst surface area (m^2/g)
-Ut = 38.8               # Tube-side heat transfer coefficient (W/m^2-K)
-Us = 39.9               # Shell-side heat transfer coefficient (W/m^2-K)
+Ac_1 = 0.0508^2 / 4 * pi * Nt  # Cross-sectional area (m^2)
+Ao_1 = 0.18315 * z             # Outer area (m^2)
+a = 4 / 0.0508                 # Heat exchanging area per unit volume (m^-1)
+bd = 1.64e6                    # Bulk density (g/m^3)
+Sc = 24                        # Catalyst surface area (m^2/g)
+Ut = 38.8                      # Tube-side heat transfer coefficient (W/m^2-K)
+Us = 39.9                      # Shell-side heat transfer coefficient (W/m^2-K)
 
 Y_init = zeros(55)
 Y_init[1] = 0.0001      # CO
